@@ -1,0 +1,158 @@
+================================================================================
+COLUMN DESCRIPTIONS — dataset_cleaned.csv
+NASA Small Body Database (SBDB) — cleaned for trajectory design & mining value
+================================================================================
+
+IDENTIFIERS
+-----------
+id              (str)   Internal dataset identifier. Prefix 'a' = numbered asteroid,
+                        'b' = unnumbered asteroid.
+spkid           (int)   JPL SPICE kernel ID. Use this to query JPL Horizons for
+                        state vectors or ephemerides.
+full_name       (str)   Full formatted name/designation of the body
+                        (e.g., "     1 Ceres", "2020 AV2").
+pdes            (str)   Primary designation — the canonical ID used in publications.
+                        May be a number (e.g., "1") or provisional designation
+                        (e.g., "2020 AV2").
+name            (str)   Common name if the body has been formally named (e.g.,
+                        "Ceres"). Null for the majority of unnumbered asteroids.
+
+CLASSIFICATION
+--------------
+class           (str)   Orbital class assigned by JPL. Values:
+                          MBA  = Main Belt Asteroid
+                          OMB  = Outer Main Belt
+                          IMB  = Inner Main Belt
+                          MCA  = Mars-Crossing Asteroid
+                          APO  = Apollo (Earth-crossing, a > 1 au, q < 1.017 au)
+                          AMO  = Amor (Mars-crossing, q > 1.017 au)
+                          ATE  = Aten (Earth-crossing, a < 1 au)
+                          IEO  = Interior Earth Object (Q < 0.983 au)
+                          TJN  = Jupiter Trojan (near L4/L5)
+                          TNO  = Trans-Neptunian Object
+                          CEN  = Centaur (between Jupiter and Neptune)
+                          AST  = Asteroid (class not otherwise determined)
+                          HYA  = Hyperbolic Asteroid (interstellar candidate)
+neo             (str)   Near-Earth Object flag. 'Y' if the body has q < 1.3 au.
+                        Null for non-NEOs.
+pha             (str)   Potentially Hazardous Asteroid flag. 'Y' if MOID < 0.05 au
+                        AND H < 22. Null for non-PHAs.
+
+CORE KEPLERIAN ORBITAL ELEMENTS  (osculating, referenced to epoch_mjd, J2000 ecliptic)
+-----------------------------------
+e               (float) Eccentricity (dimensionless). e=0 → circular, 0<e<1 → elliptic.
+a               (float) Semi-major axis (au).
+q               (float) Perihelion distance (au).  q = a(1 − e).
+i               (float) Inclination with respect to the J2000 ecliptic plane (degrees).
+om              (float) Longitude of ascending node, Ω (degrees).
+w               (float) Argument of perihelion, ω (degrees).
+ma              (float) Mean anomaly at epoch, M (degrees). Combine with n and
+                        epoch_mjd to propagate position to any date.
+
+EPOCH
+-----
+epoch_mjd       (float) Modified Julian Date of the osculating elements
+                        (MJD = JD − 2400000.5). Convert to JD by adding 2400000.5.
+                        All orbital elements (e, a, q, i, om, w, ma) are valid at
+                        this epoch.
+
+DERIVED ORBITAL QUANTITIES  (computed from the elements above; provided for convenience)
+--------------------------
+ad              (float) Aphelion distance (au).  ad = a(1 + e).
+n               (float) Mean motion (degrees/day).  n = 360 / per.
+tp              (float) Time of perihelion passage (Julian Date, TDB).
+per             (float) Orbital period (days).
+
+EARTH-ACCESSIBILITY METRICS
+----------------------------
+moid            (float) Minimum Orbit Intersection Distance with Earth (au).
+                        Lower values → geometrically easier transfers.
+                        MOID < 0.05 au flags a PHA candidate.
+moid_jup        (float) Minimum Orbit Intersection Distance with Jupiter (au).
+                        Used to assess dynamical stability.
+t_jup           (float) Tisserand parameter with respect to Jupiter (dimensionless).
+                        t_jup > 3.0 → asteroid dynamical class;
+                        t_jup < 3.0 → comet-like dynamics.
+
+ORBIT UNCERTAINTY (1-sigma formal uncertainties from orbit solution)
+--------------------------------------------------------------------
+sigma_e         (float) 1-σ uncertainty in eccentricity.
+sigma_a         (float) 1-σ uncertainty in semi-major axis (au).
+sigma_q         (float) 1-σ uncertainty in perihelion distance (au).
+sigma_i         (float) 1-σ uncertainty in inclination (degrees).
+sigma_om        (float) 1-σ uncertainty in longitude of ascending node (degrees).
+sigma_w         (float) 1-σ uncertainty in argument of perihelion (degrees).
+sigma_ma        (float) 1-σ uncertainty in mean anomaly (degrees).
+sigma_ad        (float) 1-σ uncertainty in aphelion distance (au).
+sigma_n         (float) 1-σ uncertainty in mean motion (degrees/day).
+sigma_tp        (float) 1-σ uncertainty in time of perihelion passage (days).
+sigma_per       (float) 1-σ uncertainty in orbital period (days).
+
+ORBIT SOLUTION QUALITY
+-----------------------
+n_obs_used      (int)   Number of observations used to determine the orbit.
+                        Higher = more reliable solution.
+condition_code  (int)   MPC Orbit Condition Code (0–9). 0 = best-determined orbit;
+                        higher values = larger uncertainty. Filter to ≤ 4 for
+                        reliable trajectory planning.
+rms             (float) RMS residual of the orbit fit (arcseconds). Smaller = better.
+
+PHYSICAL & MINING-VALUE PROPERTIES
+------------------------------------
+H               (float) Absolute magnitude (mag). Relates to size via:
+                          D(km) ≈ 1329 / sqrt(albedo) × 10^(−H/5)
+                        Smaller H → larger body → higher resource mass.
+H_sigma         (float) 1-σ uncertainty in H (mag).
+diameter        (float) Effective (volume-equivalent sphere) diameter (km).
+                        Available for ~17% of bodies; derived from albedo + H where
+                        direct measurements exist.
+diameter_sigma  (float) 1-σ uncertainty in diameter (km).
+albedo          (float) Geometric albedo (dimensionless, 0–1).
+                        Low albedo (< 0.1) → C/D/P-type → carbonaceous, water-rich.
+                        High albedo (> 0.2) → S/V-type → silicates, metals.
+spec_B          (str)   Spectral type from the Bus-DeMeo taxonomy (most modern).
+                        Key mining types:
+                          C, Cb, Cg, Cgh, Ch → carbonaceous (water, organics)
+                          S, Sq, Sr, Sw, Sa   → silicates (olivine/pyroxene)
+                          X, Xc, Xe, Xk       → includes metallic M-types
+                          D, T                → primitive (outer belt)
+                          V                  → basaltic (Vesta family)
+spec_T          (str)   Spectral type from the older Tholen taxonomy. Values: C, S,
+                        M, X, D, T, B, F, G, V, A, E, P, Q, R, and composites.
+                        Use spec_B preferentially; fall back to spec_T when spec_B
+                        is null.
+BV              (float) B−V broadband color index (mag). Distinguishes asteroid
+                        taxonomic classes:
+                          BV < 0.70 → C-complex (dark, primitive)
+                          BV > 0.85 → S-complex (bright, rocky)
+UB              (float) U−B broadband color index (mag). Additional discriminator
+                        for composition when spectral types are unavailable.
+
+================================================================================
+NOTES ON MISSING VALUES
+================================================================================
+Most physical properties (diameter, albedo, spec_B, spec_T, BV, UB) are measured
+for only a minority of asteroids — primarily the larger, brighter Main Belt bodies.
+For unmeasured bodies, diameter can be estimated from H and an assumed albedo.
+Spectral type can sometimes be inferred from BV/UB color indices or albedo alone.
+
+Orbit sigma columns are null for a small fraction of bodies with very recent or
+poorly-observed orbits; condition_code and rms are more reliable quality indicators
+in those cases.
+
+================================================================================
+DROPPED COLUMNS (relative to latest_fulldb.csv) AND REASON
+================================================================================
+prefix, orbit_id, equinox, epoch, epoch_cal, tp_cal, per_y, moid_ld
+    → Redundant or bookkeeping fields; superseded by epoch_mjd, tp, per, moid.
+producer, data_arc, first_obs, last_obs
+    → Provenance metadata; not needed for trajectory or mining calculations.
+rot_per
+    → Rotation period; 97.6% null and not needed for trajectory design.
+G, M1, M2, K1, K2, PC, BV (G=slope param), IR, GM, extent
+    → Cometary magnitude parameters or physical fields that are 99-100% null.
+A1, A2, A3, DT
+    → Non-gravitational force parameters; 100% null in this export.
+two_body, n_del_obs_used, n_dop_obs_used
+    → Solution flags / radar observation counts; >99% null.
+================================================================================
