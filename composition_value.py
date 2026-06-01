@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat May 30 15:46:57 2026
+
+@author: administrator
+"""
+
 # -*- coding: utf-8 -*-
 """composition_value.ipynb
 
@@ -68,9 +76,10 @@ RHO_DEFAULT = 2000.0
 # M-type: standard iron meteorite composition (Webster/Asterank 2013)
 # S-type: silicate-dominated, negligible resource value (Webster/Asterank 2013)
 
+#PGMs: https://www.sciencedirect.com/science/article/pii/S0032063322001945
 COMPOSITION = {
     'C': {'water': 0.200, 'iron': 0.166, 'nickel': 0.014, 'cobalt': 0.002},
-    'M': {'water': 0.000, 'iron': 0.880, 'nickel': 0.100, 'cobalt': 0.005},
+    'M': {'water': 0.000, 'iron': 0.880, 'nickel': 0.100, 'cobalt': 0.005, 'PGMs': 45e-6},
     'S': {'water': 0.000, 'iron': 0.000, 'nickel': 0.000, 'cobalt': 0.000},
 }
 
@@ -83,10 +92,11 @@ Y = {
 
 # Material prices ($/kg) — Webster/Asterank (2013)
 PRICE_PER_KG = {
-    'water':  0.01,
-    'iron':   2e-7,
-    'nickel': 0.00002,
-    'cobalt': 0.20,
+    'water':  0.47, # https://www.walgreens.com/store/c/nice!-for-you-distilled-water/ID=prod6163492-product
+    'iron':   3.180, # https://tradingeconomics.com/commodities 2e-7,
+    'nickel': 18.96, # https://www.dailymetalprice.com/metalprices.php?c=ni&u=kg&d=5&x=USD 0.00002,
+    'cobalt': 56.29, #https://www.dailymetalprice.com/metalprices.php?c=co&u=kg&d=5&x=USD 0.20,
+    'PGMs': 60000, # https://www.dailymetalprice.com/metalprices.php?c=ru&u=kg&d=5&x=USD
 }
 
 def value_per_kg(comp_class):
@@ -246,7 +256,7 @@ def compute_row(row):
     sigma_M = E_M * sigma_frac[comp_class]
 
     # Dollar value: E[M_useful] split by material fractions × price
-    value_usd = m_bulk * value_per_kg(comp_class)
+    value_usd =   value_per_kg(comp_class) # * m_bulk
 
     return comp_class, method, E_M, sigma_M, value_usd
 
@@ -298,5 +308,51 @@ if __name__ == '__main__':
          'E_M_useful_kg', 'sigma_M_kg', 'value_usd']
     ]
     print(top_val.to_string(index=False))
+
+    # =========================================================================
+    # CLASSIFIED-ONLY CSV
+    # =========================================================================
+    # orbital_calculation.calculate_trajectory_mass uses an index into the
+    # *orbital-filtered* dataframe (rows missing a/e/i/Ω/ω/M/epoch are dropped,
+    # then the index is reset). To make the saved indexes usable by that
+    # function, we apply the same filter here and report the post-filter index.
+    print("\nWriting classified_asteroids.csv ...")
+
+    required_orbital = ['a', 'e', 'i', 'om', 'w', 'ma', 'epoch_mjd']
+    df_orb_mask      = df[required_orbital].notna().all(axis=1)
+
+    # Build the same index space orbital_calculation uses: filter, reset_index.
+    df_orb           = df[df_orb_mask].reset_index(drop=True)
+    records_orb      = records[df_orb_mask.values].reset_index(drop=True)
+
+    classified_mask  = records_orb['comp_class'].notna()
+    classified_df    = pd.DataFrame({
+        'dataset_index'    : df_orb.index[classified_mask],
+        'spkid'            : df_orb.loc[classified_mask, 'spkid'].values,
+        'full_name'        : df_orb.loc[classified_mask, 'full_name'].values,
+        'pdes'             : df_orb.loc[classified_mask, 'pdes'].values,
+        'class'            : df_orb.loc[classified_mask, 'class'].values,
+        'neo'              : df_orb.loc[classified_mask, 'neo'].values,
+        'a'                : df_orb.loc[classified_mask, 'a'].values,
+        'e'                : df_orb.loc[classified_mask, 'e'].values,
+        'i'                : df_orb.loc[classified_mask, 'i'].values,
+        'q'                : df_orb.loc[classified_mask, 'q'].values,
+        'om'               : df_orb.loc[classified_mask, 'om'].values,   # Ω, RAAN (deg)
+        'w'                : df_orb.loc[classified_mask, 'w'].values,    # ω, arg of peri (deg)
+        'moid'             : df_orb.loc[classified_mask, 'moid'].values,
+        'diameter'         : df_orb.loc[classified_mask, 'diameter'].values,
+        'comp_class'       : records_orb.loc[classified_mask, 'comp_class'].values,
+        'class_method'     : records_orb.loc[classified_mask, 'class_method'].values,
+        'E_M_useful_kg'    : records_orb.loc[classified_mask, 'E_M_useful_kg'].values,
+        'sigma_M_kg'       : records_orb.loc[classified_mask, 'sigma_M_kg'].values,
+        'value_usd'        : records_orb.loc[classified_mask, 'value_usd'].values,
+    })
+    classified_df.to_csv('classified_asteroids.csv', index=False)
+    print(f"  Wrote classified_asteroids.csv: {len(classified_df):,} rows "
+          f"(orbital-filtered, classified)")
+    print(f"  dataset_index in this file is directly usable in "
+          f"orbital_calculation.calculate_trajectory_mass()")
+    print(f"  Class breakdown: "
+          f"{dict(classified_df['comp_class'].value_counts())}")
 
     print("\nDone.")
